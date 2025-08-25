@@ -1,14 +1,473 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/c4vin/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vite + React</title>
-    <script type="module" crossorigin src="/c4vin/assets/index-CRnEgpT1.js"></script>
-    <link rel="stylesheet" crossorigin href="/c4vin/assets/index-Dtn62Xmo.css">
-  </head>
-  <body>
-    <div id="root"></div>
-  </body>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>C4 Corvette VIN Decoder</title>
+    <link rel="icon" type="image/x-icon" href="./car.ico">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet">    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background-color: #0d0d0d; /* deep neutral black */
+            color: #e6e6e6; /* near-white text */
+        }
+
+        .bg-card {
+            background-color: #1a1a1a; /* slightly raised card */
+        }
+
+        .text-primary {
+            color: #f5f5f5; /* bright white for main text */
+        }
+
+        .text-secondary {
+            color: #a3a3a3; /* muted gray for secondary text */
+        }
+
+        .input-field {
+            background-color: #1f1f1f; 
+            border: 1px solid #333333;
+            color: #e6e6e6;
+        }
+        .input-field::placeholder {
+            color: #666666;
+        }
+
+        .chip {
+            background-color: #2a2a2a;
+            color: #f5f5f5;
+        }
+        .chip-remove {
+            color: #ff4d4d; /* red accent */
+        }
+
+        .scrollable-list {
+            background-color: #1f1f1f;
+            border: 1px solid #2a2a2a;
+        }
+        .scrollable-list div:hover {
+            background-color: #262626;
+        }
+
+        .btn-primary {
+            background-color: #2e2e2e; /* sleek dark button */
+            color: #f5f5f5;
+        }
+        .btn-primary:hover {
+            background-color: #3a3a3a;
+        }
+
+        .btn-green {
+            background-color: #1f3d2e; /* subtle deep green */
+            color: #b7ffc4;
+        }
+        .btn-green:hover {
+            background-color: #25593c;
+        }
+
+        .btn-accent-red {
+            background-color: #3d1f1f; /* dark red base */
+            color: #ff4d4d;
+        }
+        .btn-accent-red:hover {
+            background-color: #5c1f1f;
+        }
+
+    </style>
+</head>
+<body class="font-sans p-4">
+    <div class="max-w-4xl mx-auto bg-card shadow-xl rounded-lg p-6 md:p-10 my-10">
+    <h1 class="text-3xl md:text-4xl font-extrabold text-center text-primary mb-2">
+        <span style="font-family: 'Space Mono', monospace;" class="text-blue-500">C4 Corvette</span> Vin Decoder
+    </h1>
+        <p class="text-center text-secondary mb-8">Enter your VIN and RPO codes to get a full breakdown of your car's options.</p>
+
+        <div class="space-y-6">
+            <div>
+                <label for="vin-input" class="block text-sm font-medium text-primary">Vehicle Identification Number (VIN)</label>
+                <input type="text" id="vin-input" maxlength="17" placeholder="e.g., 1G1YY26W485100001" class="mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none input-field sm:text-sm uppercase">
+                <p id="vin-error" class="text-red-400 text-sm mt-1 hidden">Please enter a valid 17-character VIN.</p>
+            </div>
+
+            <div class="relative">
+                <label for="rpo-input" class="block text-sm font-medium text-primary">RPO Codes</label>
+                <div id="rpo-chips-container" class="flex flex-wrap items-center mt-1 p-2 border rounded-md input-field min-h-[40px] cursor-text">
+                    <input type="text" id="rpo-input" placeholder="Enter or paste codes (e.g., Z51, LT1, F45)" class="flex-grow bg-transparent focus:outline-none p-0 text-sm input-field border-none">
+                </div>
+                <div id="rpo-options-list" class="absolute z-10 w-full shadow-lg rounded-md mt-1 hidden scrollable-list">
+                    </div>
+            </div>
+        </div>
+
+        <button id="decode-btn" class="mt-8 w-full font-bold py-3 px-4 rounded-md transition duration-200 btn-primary">
+            Decode
+        </button>
+        
+        <div id="msrp-banner" class="mt-8 bg-neutral-200 rounded-lg p-6 text-center opacity-90 hidden">
+            <h2 class="text-lg font-semibold text-gray-900 mb-2">Estimated MSRP</h2>
+            <p id="msrp-value" class="text-5xl font-extrabold text-blue-500"></p>
+        </div>
+
+        <div id="results-container" class="mt-10 space-y-8 hidden">
+            
+            <div id="vin-card" class="bg-card border rounded-lg shadow-md p-6 border-neutral-800">
+                <h2 class="text-2xl font-semibold text-primary mb-4">VIN Breakdown</h2>
+                <div id="vin-results" class="space-y-3">
+                    </div>
+            </div>
+
+            <div id="rpo-card" class="bg-card border rounded-lg shadow-md p-6 border-neutral-800">
+                <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
+                    <h2 class="text-2xl font-semibold text-primary">Option Packages (RPO Codes)</h2>
+                    <button id="copy-rpo-btn" class="btn-primary py-1 px-3 rounded text-sm transition-all duration-200">
+                        Copy
+                    </button>
+                </div>
+                <ul id="rpo-results" class="space-y-2">
+                    </ul>
+            </div>
+
+            <button id="export-csv-btn" class="w-full font-bold py-3 px-4 rounded-md transition duration-200 btn-green">
+                Export to Spreadsheet
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Data for VIN decoding
+        const vinData = {
+            '1': { 'description': 'Country of Origin', 'values': { '1': 'USA' } },
+            '2': { 'description': 'Manufacturer', 'values': { 'G': 'GM' } },
+            '3': { 'description': 'Make of Car', 'values': { '1': 'Chevrolet' } },
+            '4': { 'description': 'Car Line or Series', 'values': { 'Y': 'Y-body series (Corvette)' } },
+            '5': { 'description': 'Model/Equipment', 'values': { 'Y': 'Corvette Standard', 'Z': 'ZR1' } },
+            '6': { 'description': 'Body Style', 'values': { '07': '1982 Collectors Edition', '1': 'Hard Top', '2': 'Coupe', '3': 'Convertible' } },
+            '7': { 'description': 'Restraint System', 'values': { '2': 'Front', '3': 'Late model seat belts warning and air bags' } },
+            '8': { 'description': 'Engine Type', 'values': { '8': 'L98', 'P': 'LT1', 'J': 'ZR1' } },
+            '9': { 'description': 'Check Digit', 'values': { '0': 'Security Code Check Digit Calculator' } },
+            '10': { 'description': 'Model Year', 'values': { 'B': '1981', 'C': '1982', 'D': '1983', 'E': '1984', 'F': '1985', 'G': '1986', 'H': '1987', 'J': '1988', 'K': '1989', 'L': '1990', 'M': '1991', 'N': '1992', 'P': '1993', 'R': '1994', 'S': '1995', 'T': '1996' } },
+            '11': { 'description': 'Final Assembly Plant Location', 'values': { '4': 'St. Louis, MO', '5': 'Bowling Green, KY' } },
+            '12-17': { 'description': 'Production Sequence Number', 'values': { '800001': 'ZR1', '700001': 'Z06', '100001': 'All Other' } }
+        };
+
+        // Data for RPO decoding (shortened list as requested)
+        const rpoData = {
+        "00L": "Only primer secondary (lower) exterior", "00U": "Only primer exterior", "01L": "Special non‑Corvette secondary (lower) exterior", "01U": "Special non‑Corvette exterior", "02L": "Special not color charted secondary (lower) exterior", "02U": "Special not color charted exterior", "05L": "Dark purple Metallic secondary (lower) exterior", "05U": "Dark purple Metallic exterior", "103": "White leather interior 1984‑92", "103": "Arctic White leather interior 1993‑96", "10I": "Arctic White interior", "10T": "Arctic White convertible top", "10U": "White exterior 1984‑92", "10U": "Arctic White exterior 1993‑96", "113": "White leather interior", "119": "White safety belts", "11P": "White wheels", "11T": "White vinyl convertible top", "122": "Graphite leather interior", "12C": "Graphite cloth interior", "12I": "Graphite interior trim", "12V": "Graphite cloth sport seats", "13L": "Silver Metallic secondary (lower) exterior", "13U": "Silver Metallic exterior 1985‑88", "13U": "Sebring Silver Metallic exterior 1996", "143": "Light Gray leather interior", "144": "Light Gray leather interior", "14I": "Light Gray interior trim", "152": "Medium Gray leather interior", "15C": "Medium Gray cloth interior", "15I": "Medium Gray interior trim", "15V": "Medium Gray cloth sport seats", "16L": "Bright Silver Metallic secondary (lower) exterior", "16T": "Bright White convertible top", "16U": "Bright Silver Metallic exterior", "17P": "Silver Gray wheels", "18L": "Medium Gray Metallic secondary (lower) exterior", "18U": "Medium Gray Metallic exterior", "192": "Black leather interior", "193": "Black leather interior", "194": "Black leather interior", "195": "Black leather interior", "199": "Black safety belts", "19C": "Black cloth interior", "19G": "Black cloth interior", "19I": "Black interior trim", "19T": "Black convertible top", "19U": "Black exterior", "1AA": "Delete marketed base option package", "1AY": "Stock order", "1AZ": "Modification stock order or order sold", "1BL": "Components of Z51 performance handling package", "1CS": "Modification order caravan driveway", "1DA": "Sequencing schedule 01", "1DB": "Sequencing schedule 02", "1DC": "Sequencing schedule 03", "1DD": "Sequencing schedule 04", "1DE": "Sequencing schedule 05", "1DF": "Sequencing schedule 06", "1DG": "Sequencing schedule 07", "1DH": "Sequencing schedule 08", "1DI": "Sequencing schedule 09", "1DJ": "Sequencing schedule 10", "1DK": "Sequencing schedule 11", "1DL": "Sequencing schedule 12", "1DM": "Sequencing schedule 13", "1DN": "Sequencing schedule 14", "1DO": "Sequencing schedule 15", "1DP": "Sequencing schedule 16", "1DQ": "Sequencing schedule 17", "1DR": "Sequencing schedule 18", "1DS": "Sequencing schedule 19", "1DT": "Sequencing schedule 20", "1DU": "Sequencing schedule 21", "1DV": "Sequencing schedule 22", "1DW": "Sequencing schedule 23", "1DX": "Sequencing schedule 24", "1DY": "Sequencing schedule 25", "1DZ": "Sequencing schedule 26", "1SA": "Marketed option package 1", "1SB": "Marketed option package 2", "1SC": "Marketed option package 3", "1SD": "Marketed option package 4", "1SE": "Marketed option package 5", "1SF": "Marketed option package 6", "207": "Sport package", "20L": "Light Blue Metallic secondary (lower) exterior", "20U": "Light Blue Metallic exterior 1984‑85", "20U": "Medium Blue Metallic exterior 1986‑89", "212": "Blue leather interior", "21C": "Blue cloth interior", "21I": "Medium Blue interior trim", "219": "Medium Blue safety belts", "223": "Steel Blue leather interior", "229": "Steel Blue safety belts", "22I": "Steel Blue interior trim", "22T": "Blue convertible top", "23L": "Medium Blue Metallic secondary (lower) exterior", "23U": "Medium Blue Metallic exterior", "24S": "Blue tint roof panel", "25L": "Steel Blue Metallic secondary (lower) exterior", "25U": "Steel Blue Metallic exterior", "282": "Medium Blue leather interior", "28C": "Medium Blue cloth interior", "28I": "Medium Blue interior trim", "28U": "Admiral Blue exterior 1994‑96", "28U": "Dark Blue Metallic exterior 1988‑89", "28V": "Medium Blue cloth sport seats", "31U": "Arctic Pearl exterior", "33L": "Light Driftwood Metallic secondary (lower) exterior", "33U": "Light Driftwood Metallic exterior", "34T": "Beige II convertible top", "35U": "Yellow exterior", "4001ZA": "Malcolm Konner Special Edition", "40A": "White accent stripes", "40L": "White secondary (lower) exterior", "40U": "White exterior", "41I": "Black interior trim", "41L": "Black secondary (lower) exterior", "41P": "Black wheels", "41T": "Black convertible top", "41U": "Black exterior", "42U": "Turquoise Metallic exterior", "43U": "Bright Aqua Metallic exterior", "45U": "Polo green II Metallic exterior 1992‑93", "45U": "Polo green Metallic exterior 1994‑96", "53U": "Competition Yellow exterior 1990‑96", "53U": "Gold Metallic exterior 1984‑87", "592": "Silver Beige leather interior", "59L": "Silver Beige Metallic secondary (lower) exterior", "59U": "Silver Beige Metallic exterior", "602": "Saddle leather interior", "603": "Saddle leather interior", "609": "Saddle safety belts", "60C": "Saddle cloth interior", "60I": "Saddle interior trim", "622": "Saddle cloth interior", "62C": "Saddle cloth interior", "62I": "Saddle interior trim", "62V": "Saddle cloth sport seats", "63L": "Light Bronze Metallic secondary (lower) exterior", "63U": "Light Bronze Metallic exterior", "643": "Light Beige leather interior", "649": "Light Beige safety belts", "64I": "Light Beige interior trim", "64S": "Bronze roof panel", "652": "Bronze leather interior", "65C": "Bronze cloth interior", "65I": "Bronze interior trim", "65V": "Bronze cloth sport seats", "66U": "Copper Metallic exterior 1986‑94", "66U": "Dark bronze Metallic exterior 1984‑85", "67T": "Saddle vinyl convertible top", "68T": "Beige convertible top", "68U": "Dark red Metallic exterior 1989‑90", "68U": "Ruby red Metallic exterior 1993", "69U": "Medium brown Metallic exterior", "703": "Red leather interior", "704": "Red Collector edition leather interior", "705": "Red & black Grand Sport leather interior", "70I": "Torch red interior trim", "A-2": "Leather seats", "A-8": "Leather sport seats", "A1E": "Oshawa delivery, additional windshield washer fluid", "A26": "European windows", "A42": "Standard leather seats", "A4G": "Canadian requirements deleted", "A51": "Sport leather seats deleted", "A5J": "Canadian accounting purposes", "AC1": "Power passenger sport seat", "AC3": "Power driver sport seat", "ACM": "Vehicle lead unit", "AG1": "Power driver sport seat", "AG2": "Power passenger sport seat", "AG9": "Power driver seat", "AJ3": "Airbag restraint system", "AK5": "Inflatable seats", "AQ9": "Sport seats ‑ cloth (1984)", "AQ9": "Sport seats ‑ leather", "AR9": "Base seats ‑ leather", "AS8": "Manual restraint seats", "AS9": "Cloth sports seats", "AU0": "Remote entry second transmitter", "AU3": "Power door locks", "AV3": "Cargo tie down fastener", "AX4": "European manual restraint seat", "B-8": "Cloth sport seats", "B0A": "Production week 19", "B0B": "Production week 20", "B0C": "Production week 21", "B0D": "Production week 22", "B0E": "Production week 23", "B0F": "Production week 24", "B0G": "Production week 25", "B0H": "Production week 26", "B0J": "Production week 27", "B0K": "Production week 28", "B0L": "Production week 29", "B0M": "Production week 30", "B0N": "Production week 31", "B0P": "Production week 32", "B0Q": "Production week 33", "B0R": "Production week 34", "B0S": "Production week 35", "B0T": "Production week 36", "B0U": "Production week 37", "B0V": "Production week 38", "B0W": "Production week 39", "B0X": "Production week 52", "B0Y": "Production week 3", "B16": "Special option package processing", "B1T": "Plant build‑out", "B1X": "Optional steering gear ratio", "B18": "35th anniversary interior ornamentation", "B2B": "Components of Z52 sport handling package", "B2K": "Callaway twin‑turbo", "B2M": "First three weeks orders", "B3W": "Advance price sheet", "B4H": "Export noise control modification", "B4M": "Custom feature package", "B4P": "Radiator cooling boost fan", "B4Z": "Custom option package", "B57": "35th anniversary exterior ornamentation", "B6R": "Decal package", "B74": "Moldings for extra wide wheels", "B8M": "Production week 1", "B8N": "Production week 2", "B8P": "Production week 40", "B8Q": "Production week 41", "B8R": "Production week 42", "B8S": "Production week 43", "B8T": "Production week 44", "B8U": "Production week 45", "B8V": "Production week 46", "B8W": "Production week 47", "B8X": "Production week 48", "B8Y": "Production week 49", "B8Z": "Production week 50", "B9A": "Production week 51", "B9C": "Production week 3", "B9D": "Production week 4", "B9E": "Production week 5", "B9F": "Production week 6", "B9G": "Production week 7", "B9H": "Production week 8", "B9K": "Cloth trim, Processing option", "BAG": "Lose parts package", "BGR": "Bowling Green assembly", "BP4": "Radiator boost fan", "BX1": "Front end special ornamentation", "BZ0": "Production week 9", "BZ1": "Production week 10", "BZ2": "Production week 11", "BZ3": "Production week 12", "BZ4": "Production week 13", "BZ5": "Production week 14", "BZ6": "Production week 15", "BZ7": "Production week 16", "BZ8": "Production week 17", "BZ9": "Production week 18", "C05": "Convertible folding top", "C18": "Export windshield washer, arms and blades", "C2L": "Dual removable roof panels", "C49": "Electric rear window defogger", "C60": "Manual air condition", "C68": "Automatic electronic air condition", "CC2": "Auxiliary hardtop", "CC3": "Transparent roof panel", "CF7": "Non‑transparent roof panel", "CK4": "Delivery Greece", "CR5": "Delivery Yugoslavia", "CR6": "Delivery Poland", "CR7": "Delivery Hungary", "CS0": "Delivery The Czech republic", "CT1": "Delivery Belgium", "CT2": "Delivery Austria", "CT3": "Delivery Germany", "CT4": "Delivery Luxembourg", "CT5": "Delivery The Netherlands", "CT6": "Delivery Italy", "CT7": "Delivery Denmark", "CT9": "Delivery Spain", "CU1": "Delivery Norway", "CU2": "Delivery Finland", "CU3": "Delivery France", "CU4": "Delivery Sweden", "CU5": "Delivery Switzerland", "CU7": "Delivery Kuwait", "CU8": "Delivery Saudi Arabia", "CU9": "Delivery United Kingdom", "CV3": "Delivery Mexico", "CV5": "Delivery Japan", "CV6": "Delivery Chile", "CV7": "Delivery England", "CVA1": "Marketed option package 2", "CVAB": "Marketed option package 1", "CW1": "Delivery Korea", "CW2": "Delivery The Gulf States", "CW3": "Delivery Asia or Pacific countries", "CW4": "Delivery The Caribbeans", "CW6": "Delivery Guam", "CW7": "Delivery Puerto Rico or US Virgin Islands", "CW8": "Delivery Mexico or to Mexican border dealer", "CW9": "Delivery unregulated countries", "CX2": "Delivery Columbia", "CX3": "Delivery Ecuador", "CYA1": "Marketed option package 2", "CYAB": "Marketed option package 1", "CZ1": "Delivery Central America", "CZ2": "Delivery China", "CZ3": "Delivery Russia", "D3W": "Speedometer driven gear 25513044 red", "D3X": "Speedometer driven gear 25513049 green", "D36": "Export inside rearview 10\" tilt mirror", "D4D": "Speedometer driven gear 25513047", "D4L": "Speedometer driven gear 25513050 purple", "D60": "Trim color compatibility override", "D64": "Passenger vanity mirror", "D74": "Illuminated driver vanity mirror", "D7A": "Speedometer driven gear 25513042 orange", "D7B": "Speedometer driven gear 25513043 orange", "D7C": "Speedometer driven gear 25513045", "D81": "Vehicle sensor?", "D82": "Special paint", "D84": "Two‑tone paint", "D8I": "Speedometer sensor 10456089", "D8K": "Speedometer sensor 10456091", "D8L": "Speedometer sensor 10456092", "D98": "Speedometer sensor 25007308 ?", "D9A": "Speedometer sensor 25007224", "D9B": "Speedometer sensor 85007308 ?", "DC7": "Twin remote outside mirrors", "DC8": "Breakaway side mirrors ‑ Europe", "DG7": "Twin remote outside mirrors", "DL5": "Roadside service information decal", "DL8": "Twin remote heated outside mirrors", "DS1": "Diplomatic sales", "E45": "Protective convertible top cover", "E5C": "Delete speedometer adaptor", "E5Z": "Delete speedometer adaptor", "E9Z": "Delete speedometer key", "EXP": "Export vehicle", "F45": "Selective real time damping", "F51": "Heavy duty shock absorber", "F58": "Heavy duty front stabilizer bar", "FE1": "Base suspension", "FE3": "Sport suspension", "FE7": "High performance suspension", "FE9": "Federal emission certification", "FG3": "Preloaded gas shock absorbers", "FLT": "Fleet processing", "FX3": "Selective ride and handling", "G44": "Rear axle 3.07 ratio", "G87": "Ring gear 8.50 inch", "G92": "Rear axle performance ratio", "GH0": "Rear axle 3.54 ratio", "GM1": "Rear axle 2.59 ratio", "GM3": "Rear axle 3.45 ratio", "GT7": "Rear axle 3.33 ratio", "GU2": "Rear axle 2.73 ratio", "GW4": "Rear axle 3.31 ratio", "HE3": "Rear axle 3,07 ratio", "IL3": "Interior trim design L3", "IL4": "Interior trim design L4", "IL5": "Interior trim design L5", "IP3": "Interior trim design P3", "IPC": "Interior trim design (PC) (AR9) less finished parts", "J55": "High performance brake package", "JL9": "Anti‑lock front and rear disc brakes", "K05": "Engine block heater", "K09": "120 amp generator", "K29": "Powertrain control module", "K34": "Cruise control", "K61": "97 amp generator", "K68": "105 amp generator", "K69": "Additional ignition key", "K90": "108 amp generator", "KB2": "Cast iron cylinder heads", "KC4": "Engine oil cooler", "KG9": "140 amp generator", "KW2": "124 amp generator", "L83": "Crossfire injection 5.7 L engine", "L98": "Tuned port injection 5.7 L engine", "LT1": "Sequential fuel injection Generation II 5.7 L engine", "LT4": "Sequential fuel injection Generation III 5.7 L engine", "LT5": "DOHC, 32 Valve 5.7 L engine", "M30": "Automatic 4‑speed electronic transmission", "MAE": "Marketing area Europe", "MAU": "Unregulated marketing area", "MD8": "Automatic 4‑speed transmission", "MK2": "Manual 4‑speed Doug Nash transmission", "ML9": "Manual 6‑speed, ZF‑transmission", "MM0": "Automatic transmission", "MM4": "4‑speed manual transmission", "MN6": "6‑speed manual transmission", "MX0": "Automatic transmission", "MY6": "Manual 4‑speed transmission", "N82": "Sport wheels equipment", "N84": "Delete spare tire", "NA5": "Federal emission system requirements", "NB1": "Federal emission closed loop system", "NB6": "California emission system, TIER 1", "NB8": "California emission override", "NC7": "Federal emission override", "NF2": "Federal emission system, TIER 1", "NG1": "New York state emissions package", "NG5": "Fifty state certification emission registration", "NK4": "Sport leather steering wheel", "NM5": "Canada emission system", "NM8": "Compatible leaded fuel system", "NN5": "California emission package", "P43": "Delete spare tire inflator", "PW9": "Cast aluminum wheels, 16 x 9.5", "PX2": "Aluminum wheels", "PY3": "Aluminum wheels 16 x 8.5", "QA0": "Styled aluminum wheels, 17 x 8.5\"", "QA1": "Styled aluminum wheels, 17 x 9.5\"", "QA2": "Styled aluminum wheels, 17 x 9.5\" front, 17 x 11\" rear", "QB6": "Styled aluminum wheels 17 x 8.5\" front, 17 x 9.5\" rear", "QD2": "Painted styled aluminum wheels 17 x 8.5\" front, 17 x 9.5\" rear", "QWT": "All tires P245/60 R15", "QZD": "16\" wheels with P255/50 VR16", "QZY": "All tires P255/50 ZR16", "R11": "Service tech training center", "R6A": "Control sales item 1", "R6B": "Control sales item 2", "R6C": "Control sales item 3", "R6D": "Control sales item 4", "R6E": "Control sales item 5", "R6F": "Control sales item 6", "R6G": "Control sales item 7", "R6H": "Control sales item 8", "R6I": "Control sales item 9", "R6J": "Control sales item 10", "R6K": "Control sales item 11", "R6L": "Control sales item 12", "R6M": "Control sales item 13 New Jersey cost surcharge", "R6N": "Control sales item 14", "R6P": "Control sales item 15", "R6Q": "Control sales item 16", "R6R": "Control sales item 17", "R6S": "Control sales item 18", "R6T": "Control sales item 19", "R6U": "Control sales item 20", "R6V": "Control sales item 21", "R6W": "Control sales item 22", "R6X": "Control sales item 23", "R6Y": "Control sales item 24", "R6Z": "Control sales item 25", "R7A": "Control sales item 26 special option processing", "R7B": "Control sales item 27", "R7C": "Control sales item 28", "R7D": "Control sales item 29", "R7E": "Control sales item 30", "R7F": "Control sales item 31", "R7G": "Control sales item 32", "R7H": "Control sales item 33", "R7I": "Control sales item 34", "R7J": "Control sales item 35", "R7K": "Control sales item 36 Special option processing", "R7L": "Control sales item 37", "R7M": "Control sales item 38", "R7N": "Control sales item 39", "R7P": "Control sales item 40", "R7Q": "Control sales item 41", "R7R": "Control sales item 42", "R7S": "Control sales item 43", "R7T": "Control sales item 44", "R7U": "Control sales item 45", "R7V": "Control sales item 46", "R7W": "Control sales item 47", "R7X": "Control sales item 48", "R7Y": "Control sales item 49", "R7Z": "Control sales item 50", "R8A": "Control sales item 51", "R8B": "Control sales item 52", "R8C": "Control sales item 53 National Corvette Museum delivery", "R8D": "Control sales item 54", "R8E": "Control sales item 55", "R8F": "Control sales item 56", "R8G": "Control sales item 57", "R8H": "Control sales item 58", "R8I": "Control sales item 59", "R8J": "Control sales item 60", "R8K": "Control sales item 61", "R8L": "Control sales item 62", "R8M": "Control sales item 63", "R8N": "Control sales item 64", "R8P": "Control sales item 65", "R8Q": "Control sales item 66", "R8R": "Control sales item 67", "R8S": "Control sales item 68", "R8T": "Control sales item 69", "R8U": "Control sales item 70", "R8V": "Control sales item 71", "R8W": "Control sales item 72", "R8X": "Control sales item 73", "R8Y": "Control sales item 74", "R8Z": "Control sales item 75", "R9A": "Control sales item 76", "R9B": "Control sales item 77", "R9C": "Control sales item 78", "R9D": "Control sales item 79", "R9E": "Control sales item 80", "R9F": "Control sales item 81", "R9G": "Control sales item 82", "R9H": "Control sales item 83", "R9I": "Control sales item 84", "R9J": "Control sales item 85", "R9K": "Control sales item 86", "R9L": "Control sales item 87", "R9M": "Control sales item 88", "R9N": "Control sales item 89", "R9P": "Control sales item 90", "R9Q": "Control sales item 91", "R9R": "Control sales item 92", "R9S": "Control sales item 93", "R9T": "Control sales item 94", "R9U": "Control sales item 95", "R9V": "Control sales item 96", "R9W": "Control sales item 97", "R9X": "Control sales item 98", "R9Y": "Control sales item 99", "R9Z": "Control sales item 100", "SPECU": "Silver beige/black exterior", "SPU": "Silver beige/black exterior", "T61": "Daytime running lights", "T72": "Left hand traffic headlamps", "T90": "Export signaling and marker lamps", "T93": "Special tail and stop lamps", "TG1": "Military personnel delivery", "U03": "Horn noise regulation", "U04": "havey duty radiator with transmission cooler", "U19": "Kilometers and miles instrument cluster", "U1F": "Delco Bose stereo system with CD and cassette", "U52": "Electronic instrument cluster", "U75": "Power antenna", "UIF": "Delco Bose stereo system with CD and cassette", "UJ6": "Low tire pressure warning system", "UL2": "European radio frequencies", "UL5": "Radio delete", "UM6": "Electronically tuned stereo radio with cassette", "UN8": "AM/FM stereo system with citizens band", "UQ4": "Delco Bose four speaker system", "UU8": "Delco Bose AM/FM stereo radio with cassette", "UX0": "Delco Bose six speaker system", "UXC": "Special radio provisions", "UY5": "Four speaker system", "UY6": "Special wiring provisions", "V01": "Heavy duty radiator", "V08": "Heavy duty cooling", "V56": "Luggage carrier (convertible)", "V73": "Vehicle statement certification, US or Canada", "V76": "Tow hook", "V78": "Delete vehicle statement", "V87": "Vehicle statement, Gulf States organizations", "VB1": "Shipping label Japan", "VC1": "Price/fuel economy label and courtesy delivery", "VC2": "Hydraulic brake fluid label", "VC4": "Price/fuel economy label, Puerto Rico and Virgin Islands", "VC5": "Shipping label, except US, US possessions or Japan", "VC7": "Price/fuel economy label, Guam", "VD1": "European option provisions", "VE1": "Japanese option provisions", "VE2": "Applied protector", "VG1": "Underhood corrosion protector", "VG6": "Bumper impact information label, California", "VG8": "Vehicle label, notice to buyer", "VG9": "Protector wax, exterior body", "VH3": "Bumper impact information label, Hawaii", "VH5": "Vehicle identification plate", "VJ9": "California compliance emission label", "VK3": "Front license plate mounting package", "VL2": "Compact spare wheel caution label", "VL4": "Front license plate mounting package", "VL5": "Rear license plate mounting package", "VL6": "Front license plate mounting package for Japan", "VL7": "Information label front and rear bumper impact, New York", "VM3": "Information consumer label, bumper impact standards", "VO1": "Heavy duty radiator", "VQ8": "Fleet program, guaranteed partial repurchase", "VS7": "Non‑saleable vehicle", "VX7": "Fleet program, cash on delivery, daily rental", "W82": "Motor Trend Car of Year Decal", "W92": "Direct sale", "WD0": "Start of platform", "WD1": "Pilot vehicle", "WD2": "Prototype vehicle", "WDV": "Partial deductible warranty waiver", "WT9": "Order modification for domestic delivery", "WY5": "Performance package, extended mobility tires (EMT)", "X05": "Sales processing option 14", "XAA": "Front tire P255/45 ZR17", "XAU": "Front tire P275/40 ZR17", "XCI": "Front tire P255/45 ZR17", "XFR": "Front tire P255/45 ZR17, EMT", "XJ5": "Special equipment for Sweden", "Y6X": "Pre‑order evaluation test", "YAA": "Rear tire P285/40 ZR17", "YAU": "Rear tire P275/40 ZR17", "YBE": "Rear tire P315/35 ZR17", "YCI": "Rear tire 255/45 ZR17", "YE8": "Corvette engineering department test vehicle", "YF5": "California emissions package", "YFR": "EMT rear tire P255/45 ZR17", "YFS": "EMT rear tire P285/40 ZR17", "Z01": "35th anniversary package", "Z07": "Adjustable performance handling package", "Z15": "Collector edition appearance package", "Z16": "Grand Sport appearance package", "Z25": "40th anniversary appearance package", "Z31": "Advance price sheet", "Z49": "Mandatory Canadian base equipment modifications", "Z4Z": "Indy pace car replica", "Z51": "Performance handling package", "Z52": "Sport handling package", "Z6A": "Rear window and side mirror defoggers", "ZR1": "Special performance package", "ZR6": "GM show vehicle", "ZV1": "Manufacturers statement of origin"
+        };
+        const allRpoCodes = Object.keys(rpoData).sort();
+        
+        // Data for MSRP pricing
+        const rpoPrices = {
+            "Z51": 575,
+            "LT1": 0, // This is a standard engine, no added cost.
+            "F45": 1695,
+            "AC1": 240,
+            "AC3": 240,
+            "AQ9": 1025,
+            "AR9": 400,
+            "B2K": 25895,
+            "B4P": 75,
+            "CC2": 1995,
+            "C2L": 915,
+            "24S": 915,
+            "64S": 615,
+            "C68": 150,
+            "D74": 58,
+            "FX3": 1695,
+            "G92": 22,
+            "K05": 20,
+            "KC4": 110,
+            "NN5": 100,
+            "UJ6": 325,
+            "UU8": 773,
+            "V01": 40,
+            "V56": 140,
+        };
+
+        // DOM Elements
+        const vinInput = document.getElementById('vin-input');
+        const vinError = document.getElementById('vin-error');
+        const rpoInput = document.getElementById('rpo-input');
+        const rpoOptionsList = document.getElementById('rpo-options-list');
+        const rpoChipsContainer = document.getElementById('rpo-chips-container');
+        const decodeBtn = document.getElementById('decode-btn');
+        const resultsContainer = document.getElementById('results-container');
+        const vinResultsDiv = document.getElementById('vin-results');
+        const rpoResultsUl = document.getElementById('rpo-results');
+        const exportCsvBtn = document.getElementById('export-csv-btn');
+        const copyRpoBtn = document.getElementById('copy-rpo-btn');
+        const msrpBanner = document.getElementById('msrp-banner');
+        const msrpValue = document.getElementById('msrp-value');
+
+        // State variables
+        let selectedRpos = new Set();
+        let vinBreakdown = {};
+        let rpoBreakdown = {};
+
+        // --- RPO Multi-select Logic ---
+        function populateRpoOptions(codes) {
+            rpoOptionsList.innerHTML = '';
+            if (codes.length === 0) {
+                const li = document.createElement('div');
+                li.className = 'p-2 text-gray-400 text-sm';
+                li.textContent = 'No matching RPO codes.';
+                rpoOptionsList.appendChild(li);
+                return;
+            }
+            codes.forEach(code => {
+                if (!selectedRpos.has(code)) {
+                    const option = document.createElement('div');
+                    option.textContent = `${code} - ${rpoData[code]}`;
+                    option.className = 'p-2 hover:bg-gray-700 cursor-pointer text-sm';
+                    option.dataset.code = code;
+                    rpoOptionsList.appendChild(option);
+                }
+            });
+        }
+
+        function addRpoChip(code) {
+            if (!selectedRpos.has(code)) {
+                selectedRpos.add(code);
+                const chip = document.createElement('span');
+                chip.className = 'chip px-2 py-1 rounded-full text-sm mr-2 mb-2 flex items-center';
+                chip.dataset.code = code;
+                chip.textContent = code;
+
+                const removeBtn = document.createElement('span');
+                removeBtn.className = 'chip-remove ml-2 cursor-pointer font-bold';
+                removeBtn.innerHTML = '&times';
+                removeBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    deleteChip(chip);
+                };
+                chip.appendChild(removeBtn);
+                rpoChipsContainer.insertBefore(chip, rpoInput);
+                rpoInput.value = '';
+                rpoOptionsList.classList.remove('hidden'); // Keep the list open
+                populateRpoOptions(allRpoCodes.filter(c => !selectedRpos.has(c)));
+            }
+        }
+        
+        function deleteChip(chip) {
+            if (chip) {
+                const code = chip.dataset.code;
+                selectedRpos.delete(code);
+                chip.remove();
+                rpoInput.focus();
+                populateRpoOptions(allRpoCodes.filter(c => !selectedRpos.has(c)));
+            }
+        }
+
+        // Handle input events for searching and pasting
+        rpoInput.addEventListener('input', (e) => {
+            const query = e.target.value;
+            // Handle paste of comma-separated list
+            if (query.includes(',')) {
+                const codes = query.split(',').map(c => c.trim().toUpperCase()).filter(c => rpoData[c]);
+                codes.forEach(addRpoChip);
+                rpoInput.value = ''; // Clear input after processing
+            } else {
+                const filteredCodes = allRpoCodes.filter(code =>
+                    code.includes(query.toUpperCase()) && !selectedRpos.has(code)
+                );
+                populateRpoOptions(filteredCodes);
+            }
+        });
+
+        rpoInput.addEventListener('keydown', (e) => {
+            // Check if backspace is pressed and input is empty
+            if (e.key === 'Backspace' && rpoInput.value === '') {
+                const lastChip = rpoChipsContainer.querySelector('.chip:last-of-type');
+                deleteChip(lastChip);
+            }
+        });
+
+        // Toggle the options list on focus and blur
+        rpoInput.addEventListener('focus', () => {
+            rpoOptionsList.classList.remove('hidden');
+            populateRpoOptions(allRpoCodes.filter(c => !selectedRpos.has(c)));
+        });
+
+        // Hide options list when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!rpoChipsContainer.contains(e.target) && !rpoOptionsList.contains(e.target)) {
+                rpoOptionsList.classList.add('hidden');
+            }
+        });
+
+        rpoOptionsList.addEventListener('click', (e) => {
+            const code = e.target.dataset.code;
+            if (code) {
+                addRpoChip(code);
+            }
+        });
+        
+        // Ensure input field receives focus when clicking the container
+        rpoChipsContainer.addEventListener('click', (e) => {
+            if (e.target.id === 'rpo-chips-container') {
+                rpoInput.focus();
+            }
+        });
+
+        // --- Decoding & Display Logic ---
+        decodeBtn.addEventListener('click', () => {
+            const vin = vinInput.value.toUpperCase();
+            if (vin.length !== 17) {
+                vinError.classList.remove('hidden');
+                resultsContainer.classList.add('hidden');
+                msrpBanner.classList.add('hidden');
+                return;
+            }
+            vinError.classList.add('hidden');
+            
+            // Clear previous results
+            vinResultsDiv.innerHTML = '';
+            rpoResultsUl.innerHTML = '';
+            vinBreakdown = {};
+            rpoBreakdown = {};
+
+            // Decode VIN
+            decodeVin(vin);
+            
+            // Decode RPO codes
+            decodeRpos();
+
+            // Calculate and display MSRP
+            calculateMSRP();
+
+            // Display results
+            resultsContainer.classList.remove('hidden');
+            msrpBanner.classList.remove('hidden');
+        });
+
+        function decodeVin(vin) {
+            const vinOrder = ['10', '2', '3', '4', '5', '6', '8', '1', '11', '7', '12-17'];
+            const addResult = (desc, value) => {
+                const item = document.createElement('div');
+                item.className = 'p-4 bg-black rounded-md shadow-inner transition-all hover:bg-neutral-800';
+                item.innerHTML = `<span class="font-normal text-secondary">${desc}:</span> <strong class="text-primary">${value}</strong>`;
+                vinResultsDiv.appendChild(item);
+                vinBreakdown[desc] = value;
+            };
+
+            vinOrder.forEach(key => {
+                let value = 'Unknown';
+                let description = vinData[key].description;
+                if (key === '12-17') {
+                    const seq = vin.substring(11, 17);
+                    value = vinData[key].values['100001'];
+                    if (vinData[key].values[seq]) {
+                        value = vinData[key].values[seq];
+                    } else if (parseInt(seq) >= 800001) {
+                        value = vinData[key].values['800001'];
+                    } else if (parseInt(seq) >= 700001) {
+                        value = vinData[key].values['700001'];
+                    } else if (parseInt(seq) >= 100001) {
+                        value = vinData[key].values['100001'];
+                    }
+                    addResult(description, `${seq} (${value})`);
+                } else if (key === '6') {
+                    const char = vin.substring(5, 6);
+                    value = vinData[key].values[char] || 'Unknown';
+                    addResult(description, value);
+                } else {
+                    const char = vin[parseInt(key) - 1];
+                    value = vinData[key].values[char] || 'Unknown';
+                    addResult(description, value);
+                }
+            });
+        }
+
+        function decodeRpos() {
+            if (selectedRpos.size === 0) {
+                const li = document.createElement('li');
+                li.className = 'text-gray-400 p-2';
+                li.textContent = 'No RPO codes were entered.';
+                rpoResultsUl.appendChild(li);
+                return;
+            }
+            selectedRpos.forEach(code => {
+                const description = rpoData[code] || 'Description not found';
+                const li = document.createElement('li');
+                li.className = 'p-4 bg-black rounded-md shadow-inner transition-all hover:bg-neutral-800';
+                li.innerHTML = `<span class="font-normal text-secondary">${code}:</span> <strong class="text-primary">${description}</strong>`;
+                rpoResultsUl.appendChild(li);
+                rpoBreakdown[code] = description;
+            });
+        }
+
+        function calculateMSRP() {
+            let totalMSRP = 28949; // Base MSRP
+            
+            // Commented-out conditional for changing base price
+            // if (selectedRpos.has("ZR1")) {
+            //     totalMSRP = 58995;
+            // }
+
+            // Commented-out conditional for changing base price
+            const zr1Codes = ["ZR1", "10T", "11T", "16T", "19T", "22T", "34T", "41T", "67T", "68T", "C05", "E45", "V56"];
+            const hasSpecialRPO = zr1Codes.some(code => selectedRpos.has(code));
+
+            if (hasSpecialRPO) {
+                totalMSRP = 34122;
+            }
+
+            for (const rpo of selectedRpos) {
+                if (rpoPrices[rpo]) {
+                    totalMSRP += rpoPrices[rpo];
+                }
+            }
+            
+            msrpValue.textContent = `$${totalMSRP.toLocaleString()}`;
+        }
+
+        // --- Copy to Clipboard Logic ---
+        copyRpoBtn.addEventListener('click', async () => {
+            const translations = Object.values(rpoBreakdown);
+            if (translations.length === 0) {
+                alert("No RPO codes to copy.");
+                return;
+            }
+            const textToCopy = translations.join(', ');
+            try {
+                await navigator.clipboard.writeText(textToCopy);
+                copyRpoBtn.textContent = 'Copied!';
+                setTimeout(() => {
+                    copyRpoBtn.textContent = 'Copy';
+                }, 2000);
+            } catch (err) {
+                console.error('Failed to copy text: ', err);
+                alert('Failed to copy. Please try again or copy manually.');
+            }
+        });
+
+        // --- CSV Export Logic ---
+        exportCsvBtn.addEventListener('click', () => {
+            let csvContent = "";
+            
+            // Add VIN Breakdown
+            csvContent += "VIN Breakdown\n";
+            for (const key in vinBreakdown) {
+                csvContent += `"${key}","${vinBreakdown[key]}"\n`;
+            }
+            csvContent += "\n";
+
+            // Add RPO Breakdown
+            csvContent += "RPO Codes\n";
+            for (const key in rpoBreakdown) {
+                csvContent += `"${key}","${rpoBreakdown[key]}"\n`;
+            }
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", "corvette_data.csv");
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+    </script>
+</body>
 </html>
